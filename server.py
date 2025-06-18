@@ -5,8 +5,8 @@ import os
 
 app = Flask(__name__)
 
-# Load model from local disk (assumed to be baked into Docker image under /models)
-MODEL_PATH = "/models/sdxl"
+# Load model from /workspace/models/ (required for RunPod Serverless)
+MODEL_PATH = "/workspace/models"
 
 print(f"🚀 Loading model from: {MODEL_PATH}")
 pipe = DiffusionPipeline.from_pretrained(
