@@ -11,8 +11,7 @@ MODEL_PATH = "/workspace/models"
 print(f"🚀 Loading model from: {MODEL_PATH}")
 pipe = DiffusionPipeline.from_pretrained(
     MODEL_PATH,
-    torch_dtype=torch.float16,
-    variant="fp16"
+    torch_dtype=torch.float16
 ).to("cuda")
 
 @app.route("/", methods=["POST"])
