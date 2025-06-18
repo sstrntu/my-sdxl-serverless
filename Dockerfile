@@ -17,26 +17,28 @@ RUN pip install --upgrade pip && \
 ARG HF_TOKEN
 ENV HF_TOKEN=${HF_TOKEN}
 
+# Create Python script for model download
+RUN echo 'import torch\n\
+from diffusers import StableDiffusion3Pipeline\n\
+from huggingface_hub import login\n\
+import os\n\
+\n\
+hf_token = os.environ.get("HF_TOKEN")\n\
+if hf_token:\n\
+    print("Logging in to HuggingFace...")\n\
+    login(token=hf_token)\n\
+else:\n\
+    print("Warning: No HF_TOKEN provided, attempting without authentication...")\n\
+\n\
+print("Downloading SD 3.5 Large model...")\n\
+pipe = StableDiffusion3Pipeline.from_pretrained("stabilityai/stable-diffusion-3.5-large", torch_dtype=torch.bfloat16)\n\
+print("Saving model to /workspace/models/...")\n\
+pipe.save_pretrained("/workspace/models/")\n\
+print("Model saved successfully")\n\
+del pipe' > /tmp/download_model.py
+
 # Download and save SD 3.5 Large model to /workspace/models/ (required for RunPod Serverless)
-RUN mkdir -p /workspace/models && \
-    python -c "\
-import torch; \
-from diffusers import StableDiffusion3Pipeline; \
-from huggingface_hub import login; \
-import os; \
-hf_token = os.environ.get('HF_TOKEN'); \
-if hf_token: \
-    print('Logging in to HuggingFace...'); \
-    login(token=hf_token); \
-else: \
-    print('Warning: No HF_TOKEN provided, attempting without authentication...'); \
-print('Downloading SD 3.5 Large model...'); \
-pipe = StableDiffusion3Pipeline.from_pretrained('stabilityai/stable-diffusion-3.5-large', torch_dtype=torch.bfloat16); \
-print('Saving model to /workspace/models/...'); \
-pipe.save_pretrained('/workspace/models/'); \
-print('Model saved successfully'); \
-del pipe; \
-"
+RUN mkdir -p /workspace/models && python /tmp/download_model.py && rm /tmp/download_model.py
 
 WORKDIR /app
 COPY server.py .
