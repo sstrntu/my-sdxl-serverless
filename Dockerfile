@@ -13,38 +13,46 @@ RUN pip install --upgrade pip && \
     pip install torch torchvision torchaudio \
     diffusers transformers accelerate safetensors flask runpod
 
-# Accept HuggingFace token as build argument
-ARG HF_TOKEN
-ENV HF_TOKEN=${HF_TOKEN}
+# HuggingFace token will be provided as runtime environment variable
+# No build argument needed - will be set at container startup
 
-# Create Python script for model download
-RUN echo 'import torch\n\
+# Create directory for models (download will happen at runtime)
+RUN mkdir -p /workspace/models
+
+# Create startup script that downloads model on first run
+RUN echo '#!/bin/bash\n\
+if [ ! -f "/workspace/models/model_index.json" ]; then\n\
+    echo "Model not found. Downloading SD 3.5 Large model..."\n\
+    python -c "\n\
+import torch\n\
 from diffusers import StableDiffusion3Pipeline\n\
 from huggingface_hub import login\n\
 import os\n\
 \n\
-hf_token = os.environ.get("HF_TOKEN")\n\
+hf_token = os.environ.get(\\\"HF_TOKEN\\\")\n\
 if hf_token:\n\
-    print("Logging in to HuggingFace...")\n\
+    print(\\\"Logging in to HuggingFace...\\\")\n\
     login(token=hf_token)\n\
-    print("Successfully authenticated with HuggingFace")\n\
+    print(\\\"Successfully authenticated with HuggingFace\\\")\n\
 else:\n\
-    raise ValueError("ERROR: HF_TOKEN environment variable is required to access SD 3.5 Large model.\\n" +\n\
-                     "Please provide a valid HuggingFace token with access to stabilityai/stable-diffusion-3.5-large.\\n" +\n\
-                     "Get your token at: https://huggingface.co/settings/tokens\\n" +\n\
-                     "Request access at: https://huggingface.co/stabilityai/stable-diffusion-3.5-large")\n\
+    raise ValueError(\\\"ERROR: HF_TOKEN environment variable is required to access SD 3.5 Large model.\\\\n\\\" +\n\
+                     \\\"Please provide a valid HuggingFace token with access to stabilityai/stable-diffusion-3.5-large.\\\\n\\\" +\n\
+                     \\\"Get your token at: https://huggingface.co/settings/tokens\\\\n\\\" +\n\
+                     \\\"Request access at: https://huggingface.co/stabilityai/stable-diffusion-3.5-large\\\")\n\
 \n\
-print("Downloading SD 3.5 Large model...")\n\
-pipe = StableDiffusion3Pipeline.from_pretrained("stabilityai/stable-diffusion-3.5-large", torch_dtype=torch.bfloat16)\n\
-print("Saving model to /workspace/models/...")\n\
-pipe.save_pretrained("/workspace/models/")\n\
-print("Model saved successfully")\n\
-del pipe' > /tmp/download_model.py
-
-# Download and save SD 3.5 Large model to /workspace/models/ (required for RunPod Serverless)
-RUN mkdir -p /workspace/models && python /tmp/download_model.py && rm /tmp/download_model.py
+print(\\\"Downloading SD 3.5 Large model...\\\")\n\
+pipe = StableDiffusion3Pipeline.from_pretrained(\\\"stabilityai/stable-diffusion-3.5-large\\\", torch_dtype=torch.bfloat16)\n\
+print(\\\"Saving model to /workspace/models/...\\\")\n\
+pipe.save_pretrained(\\\"/workspace/models/\\\")\n\
+print(\\\"Model saved successfully\\\")\n\
+del pipe"\n\
+else\n\
+    echo "Model already exists, skipping download."\n\
+fi\n\
+echo "Starting server..."\n\
+exec python server.py' > /usr/local/bin/startup.sh && chmod +x /usr/local/bin/startup.sh
 
 WORKDIR /app
 COPY server.py .
 
-CMD ["python", "server.py"]
+CMD ["/usr/local/bin/startup.sh"]
