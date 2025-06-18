@@ -8,17 +8,14 @@ RUN apt-get update && apt-get install -y \
 RUN ln -sf /usr/bin/python3.10 /usr/bin/python && \
     ln -sf /usr/bin/pip3 /usr/bin/pip
 
-# Python packages
+# Install Python packages
 RUN pip install --upgrade pip && \
     pip install torch torchvision torchaudio \
     diffusers transformers accelerate safetensors flask
 
-# (Optional) Preload SDXL model into /runpod-volume
-RUN mkdir -p /runpod-volume/models && \
-    python -c "from diffusers import DiffusionPipeline; \
-               DiffusionPipeline.from_pretrained('stabilityai/stable-diffusion-xl-base-1.0', \
-               torch_dtype='float16', \
-               cache_dir='/runpod-volume/models')"
+# Preload SDXL 3.5 model into /models (this will be part of the image)
+RUN mkdir -p /models && \
+    python -c "from diffusers import DiffusionPipeline; DiffusionPipeline.from_pretrained('stabilityai/stable-diffusion-xl-base-1.0', torch_dtype='float16', variant='fp16', cache_dir='/models/sdxl')"
 
 WORKDIR /app
 COPY server.py .

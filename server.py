@@ -5,8 +5,8 @@ import os
 
 app = Flask(__name__)
 
-# Load model from local path
-MODEL_PATH = "/runpod-volume/models/sdxl"
+# Load model from local disk (assumed to be baked into Docker image under /models)
+MODEL_PATH = "/models/sdxl"
 
 print(f"🚀 Loading model from: {MODEL_PATH}")
 pipe = DiffusionPipeline.from_pretrained(
@@ -19,7 +19,12 @@ pipe = DiffusionPipeline.from_pretrained(
 def generate():
     try:
         input_data = request.json.get("input", {})
-        prompt = input_data.get("prompt", "A majestic lion in the savannah")
+
+        # Prompt is required
+        prompt = input_data.get("prompt")
+        if not prompt:
+            return jsonify({"error": "Missing 'prompt' parameter in input."}), 400
+
         negative_prompt = input_data.get("negative_prompt", "")
         width = input_data.get("width", 1024)
         height = input_data.get("height", 1024)
@@ -33,8 +38,7 @@ def generate():
             num_inference_steps=num_inference_steps
         ).images[0]
 
-        # Save image locally
-        output_path = "/app/output.png"
+        output_path = "/output.png"
         image.save(output_path)
 
         return jsonify({"output": output_path})
