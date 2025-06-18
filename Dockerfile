@@ -13,9 +13,18 @@ RUN pip install --upgrade pip && \
     pip install torch torchvision torchaudio \
     diffusers transformers accelerate safetensors flask
 
-# Preload SDXL model into /workspace/models/ (required for RunPod Serverless)
+# Download and save SDXL model to /workspace/models/ (required for RunPod Serverless)
 RUN mkdir -p /workspace/models && \
-    python -c "from diffusers import DiffusionPipeline; DiffusionPipeline.from_pretrained('stabilityai/stable-diffusion-xl-base-1.0', torch_dtype='float16', variant='fp16', cache_dir='/workspace/models')"
+    python -c "\
+import torch; \
+from diffusers import DiffusionPipeline; \
+print('Downloading SDXL model...'); \
+pipe = DiffusionPipeline.from_pretrained('stabilityai/stable-diffusion-xl-base-1.0', torch_dtype=torch.float16, use_safetensors=True, variant='fp16'); \
+print('Saving model to /workspace/models/...'); \
+pipe.save_pretrained('/workspace/models/'); \
+print('Model saved successfully'); \
+del pipe; \
+"
 
 WORKDIR /app
 COPY server.py .

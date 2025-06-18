@@ -38,7 +38,7 @@ def generate():
             num_inference_steps=num_inference_steps
         ).images[0]
 
-        output_path = "/output.png"
+        output_path = "/workspace/output.png"
         image.save(output_path)
 
         return jsonify({"output": output_path})
