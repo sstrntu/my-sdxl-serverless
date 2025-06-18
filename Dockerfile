@@ -27,8 +27,12 @@ hf_token = os.environ.get("HF_TOKEN")\n\
 if hf_token:\n\
     print("Logging in to HuggingFace...")\n\
     login(token=hf_token)\n\
+    print("Successfully authenticated with HuggingFace")\n\
 else:\n\
-    print("Warning: No HF_TOKEN provided, attempting without authentication...")\n\
+    raise ValueError("ERROR: HF_TOKEN environment variable is required to access SD 3.5 Large model.\\n" +\n\
+                     "Please provide a valid HuggingFace token with access to stabilityai/stable-diffusion-3.5-large.\\n" +\n\
+                     "Get your token at: https://huggingface.co/settings/tokens\\n" +\n\
+                     "Request access at: https://huggingface.co/stabilityai/stable-diffusion-3.5-large")\n\
 \n\
 print("Downloading SD 3.5 Large model...")\n\
 pipe = StableDiffusion3Pipeline.from_pretrained("stabilityai/stable-diffusion-3.5-large", torch_dtype=torch.bfloat16)\n\
