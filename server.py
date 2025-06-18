@@ -1,9 +1,9 @@
-from flask import Flask, request, jsonify
+import runpod
 from diffusers import DiffusionPipeline
 import torch
 import os
-
-app = Flask(__name__)
+import base64
+import io
 
 # Load model from /workspace/models/ (required for RunPod Serverless)
 MODEL_PATH = "/workspace/models"
@@ -14,20 +14,22 @@ pipe = DiffusionPipeline.from_pretrained(
     torch_dtype=torch.float16
 ).to("cuda")
 
-@app.route("/", methods=["POST"])
-def generate():
+def generate(job):
+    """RunPod serverless handler function"""
     try:
-        input_data = request.json.get("input", {})
+        job_input = job["input"]
 
         # Prompt is required
-        prompt = input_data.get("prompt")
+        prompt = job_input.get("prompt")
         if not prompt:
-            return jsonify({"error": "Missing 'prompt' parameter in input."}), 400
+            return {"error": "Missing 'prompt' parameter in input."}
 
-        negative_prompt = input_data.get("negative_prompt", "")
-        width = input_data.get("width", 1024)
-        height = input_data.get("height", 1024)
-        num_inference_steps = input_data.get("num_inference_steps", 30)
+        negative_prompt = job_input.get("negative_prompt", "")
+        width = job_input.get("width", 1024)
+        height = job_input.get("height", 1024)
+        num_inference_steps = job_input.get("num_inference_steps", 30)
+
+        print(f"Generating image for prompt: {prompt[:50]}...")
 
         image = pipe(
             prompt=prompt,
@@ -37,12 +39,21 @@ def generate():
             num_inference_steps=num_inference_steps
         ).images[0]
 
-        output_path = "/workspace/output.png"
-        image.save(output_path)
+        # Convert image to base64 for RunPod response
+        buffer = io.BytesIO()
+        image.save(buffer, format="PNG")
+        image_base64 = base64.b64encode(buffer.getvalue()).decode()
 
-        return jsonify({"output": output_path})
+        print("✅ Image generated successfully")
+
+        return {
+            "image": image_base64,
+            "message": "Image generated successfully"
+        }
+
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        print(f"❌ Error: {str(e)}")
+        return {"error": str(e)}
 
-if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=3000)
+print("🚀 Starting RunPod Serverless handler...")
+runpod.serverless.start({"handler": generate})
