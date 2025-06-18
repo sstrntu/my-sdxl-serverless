@@ -1,17 +1,17 @@
 import runpod
-from diffusers import DiffusionPipeline
+from diffusers import StableDiffusion3Pipeline
 import torch
 import os
 import base64
 import io
 
-# Load model from /workspace/models/ (required for RunPod Serverless)
+# Load SD 3.5 Large model from /workspace/models/ (required for RunPod Serverless)
 MODEL_PATH = "/workspace/models"
 
-print(f"🚀 Loading model from: {MODEL_PATH}")
-pipe = DiffusionPipeline.from_pretrained(
+print(f"🚀 Loading SD 3.5 Large model from: {MODEL_PATH}")
+pipe = StableDiffusion3Pipeline.from_pretrained(
     MODEL_PATH,
-    torch_dtype=torch.float16
+    torch_dtype=torch.bfloat16
 ).to("cuda")
 
 def generate(job):
@@ -27,7 +27,8 @@ def generate(job):
         negative_prompt = job_input.get("negative_prompt", "")
         width = job_input.get("width", 1024)
         height = job_input.get("height", 1024)
-        num_inference_steps = job_input.get("num_inference_steps", 30)
+        num_inference_steps = job_input.get("num_inference_steps", 28)
+        guidance_scale = job_input.get("guidance_scale", 3.5)
 
         print(f"Generating image for prompt: {prompt[:50]}...")
 
@@ -36,7 +37,8 @@ def generate(job):
             negative_prompt=negative_prompt,
             width=width,
             height=height,
-            num_inference_steps=num_inference_steps
+            num_inference_steps=num_inference_steps,
+            guidance_scale=guidance_scale
         ).images[0]
 
         # Convert image to base64 for RunPod response
