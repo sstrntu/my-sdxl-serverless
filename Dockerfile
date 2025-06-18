@@ -11,7 +11,7 @@ RUN ln -sf /usr/bin/python3.10 /usr/bin/python && \
 # Install Python packages
 RUN pip install --upgrade pip && \
     pip install torch torchvision torchaudio \
-    diffusers transformers accelerate safetensors flask
+    diffusers transformers accelerate safetensors flask runpod
 
 # Download and save SDXL model to /workspace/models/ (required for RunPod Serverless)
 RUN mkdir -p /workspace/models && \
