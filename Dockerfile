@@ -13,11 +13,23 @@ RUN pip install --upgrade pip && \
     pip install torch torchvision torchaudio \
     diffusers transformers accelerate safetensors flask runpod
 
+# Accept HuggingFace token as build argument
+ARG HF_TOKEN
+ENV HF_TOKEN=${HF_TOKEN}
+
 # Download and save SD 3.5 Large model to /workspace/models/ (required for RunPod Serverless)
 RUN mkdir -p /workspace/models && \
     python -c "\
 import torch; \
 from diffusers import StableDiffusion3Pipeline; \
+from huggingface_hub import login; \
+import os; \
+hf_token = os.environ.get('HF_TOKEN'); \
+if hf_token: \
+    print('Logging in to HuggingFace...'); \
+    login(token=hf_token); \
+else: \
+    print('Warning: No HF_TOKEN provided, attempting without authentication...'); \
 print('Downloading SD 3.5 Large model...'); \
 pipe = StableDiffusion3Pipeline.from_pretrained('stabilityai/stable-diffusion-3.5-large', torch_dtype=torch.bfloat16); \
 print('Saving model to /workspace/models/...'); \
