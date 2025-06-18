@@ -13,8 +13,8 @@ RUN pip install --upgrade pip && \
     pip install torch torchvision torchaudio \
     diffusers transformers accelerate safetensors flask
 
-# Preload SDXL 3.5 model
-RUN python -c "from diffusers import DiffusionPipeline; DiffusionPipeline.from_pretrained('stabilityai/stable-diffusion-xl-base-1.0', torch_dtype='float16')"
+# Preload SDXL 3.5 Large model
+RUN python -c "from diffusers import DiffusionPipeline; DiffusionPipeline.from_pretrained('stabilityai/stable-diffusion-3.5', torch_dtype='float16')"
 
 WORKDIR /app
 COPY server.py .
