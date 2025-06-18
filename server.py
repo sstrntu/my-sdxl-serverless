@@ -1,60 +1,45 @@
-import os
-import subprocess
 from flask import Flask, request, jsonify
-from huggingface_hub import snapshot_download
+from diffusers import DiffusionPipeline
+import torch
+import os
 
 app = Flask(__name__)
 
-# Get Hugging Face token from env variable
-HF_TOKEN = os.getenv("HUGGINGFACE_TOKEN")
-MODEL_REPO = "stabilityai/stable-diffusion-xl-base-1.0"
-MODEL_DIR = "/models/sdxl"
+# Load model from local path
+MODEL_PATH = "/runpod-volume/models/sdxl"
 
-# Auto-download model if missing
-def ensure_model():
-    if not os.path.exists(MODEL_DIR):
-        print("🔄 Downloading model...")
-        snapshot_download(
-            repo_id=MODEL_REPO,
-            cache_dir=MODEL_DIR,
-            token=HF_TOKEN,
-            local_dir=MODEL_DIR,
-            local_dir_use_symlinks=False,
-            resume_download=True
-        )
-        print("✅ Model downloaded to", MODEL_DIR)
-    else:
-        print("✅ Model already exists at", MODEL_DIR)
-
-# Initialize once at startup
-ensure_model()
+print(f"🚀 Loading model from: {MODEL_PATH}")
+pipe = DiffusionPipeline.from_pretrained(
+    MODEL_PATH,
+    torch_dtype=torch.float16,
+    variant="fp16"
+).to("cuda")
 
 @app.route("/", methods=["POST"])
-def run():
-    data = request.get_json()
-    input_data = data.get("input", {})
+def generate():
+    try:
+        input_data = request.json.get("input", {})
+        prompt = input_data.get("prompt", "A majestic lion in the savannah")
+        negative_prompt = input_data.get("negative_prompt", "")
+        width = input_data.get("width", 1024)
+        height = input_data.get("height", 1024)
+        num_inference_steps = input_data.get("num_inference_steps", 30)
 
-    # Option 1: Process "prompt" field for inference (replace with real logic)
-    if "prompt" in input_data:
-        prompt = input_data["prompt"]
-        return jsonify({"response": f"You sent: {prompt}"})
+        image = pipe(
+            prompt=prompt,
+            negative_prompt=negative_prompt,
+            width=width,
+            height=height,
+            num_inference_steps=num_inference_steps
+        ).images[0]
 
-    # Option 2: Run shell command via "command" (use with caution)
-    if "command" in input_data:
-        try:
-            result = subprocess.check_output(
-                input_data["command"],
-                shell=True,
-                stderr=subprocess.STDOUT,
-                timeout=10
-            )
-            return jsonify({"output": result.decode()})
-        except subprocess.CalledProcessError as e:
-            return jsonify({"error": e.output.decode()}), 500
-        except Exception as e:
-            return jsonify({"error": str(e)}), 500
+        # Save image locally
+        output_path = "/app/output.png"
+        image.save(output_path)
 
-    return jsonify({"error": "No prompt or command provided"}), 400
+        return jsonify({"output": output_path})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=8000)
+    app.run(host="0.0.0.0", port=3000)
