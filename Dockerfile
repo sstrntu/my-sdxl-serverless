@@ -17,7 +17,7 @@ COPY download_model.py /workspace/download_model.py
 COPY server.py /app/server.py
 
 # Create models directory
-RUN mkdir -p /workspace/models
+RUN mkdir -p /models
 
 WORKDIR /app
 CMD ["python", "server.py"]

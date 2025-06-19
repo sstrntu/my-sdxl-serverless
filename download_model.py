@@ -5,7 +5,7 @@ from huggingface_hub import login
 from diffusers import StableDiffusion3Pipeline
 import torch
 
-MODEL_DIR = "/workspace/models"
+MODEL_DIR = "/models"
 MODEL_INDEX = os.path.join(MODEL_DIR, "model_index.json")
 
 if os.path.exists(MODEL_INDEX):

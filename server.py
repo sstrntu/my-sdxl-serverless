@@ -8,7 +8,7 @@ import subprocess
 import sys
 
 # Model configuration
-MODEL_PATH = "/workspace/models"
+MODEL_PATH = "/models"
 MODEL_INDEX = os.path.join(MODEL_PATH, "model_index.json")
 
 def download_model_if_needed():
