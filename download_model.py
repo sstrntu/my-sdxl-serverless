@@ -4,16 +4,31 @@ import os
 import shutil
 import glob
 
-# 🚨 CRITICAL: Override tempfile BEFORE any other imports
+# 🚨 CRITICAL: Override ALL cache/temp locations BEFORE any imports
 import tempfile
+
+# Create the directory first
+os.makedirs('/runpod-volume/tmp', exist_ok=True)
+os.makedirs('/runpod-volume/cache', exist_ok=True)
+os.makedirs('/runpod-volume/torch_cache', exist_ok=True)
+
 # Force ALL temporary operations to use runpod-volume
 os.environ['TMPDIR'] = '/runpod-volume/tmp'
 os.environ['TEMP'] = '/runpod-volume/tmp'
 os.environ['TMP'] = '/runpod-volume/tmp'
 tempfile.tempdir = '/runpod-volume/tmp'
 
-# Create the directory immediately
-os.makedirs('/runpod-volume/tmp', exist_ok=True)
+# PyTorch specific cache directories
+os.environ['TORCH_HOME'] = '/runpod-volume/torch_cache'
+os.environ['PYTORCH_KERNEL_CACHE_PATH'] = '/runpod-volume/torch_cache'
+os.environ['PYTORCH_JIT_CACHE_DIR'] = '/runpod-volume/torch_cache/jit'
+
+# System cache directories
+os.environ['XDG_CACHE_HOME'] = '/runpod-volume/cache'
+os.environ['HOME'] = '/runpod-volume'  # This redirects ~/.cache as well
+
+# Create PyTorch JIT cache directory
+os.makedirs('/runpod-volume/torch_cache/jit', exist_ok=True)
 
 from huggingface_hub import login
 from diffusers import StableDiffusion3Pipeline
