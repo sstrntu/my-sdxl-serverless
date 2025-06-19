@@ -3,6 +3,18 @@
 import os
 import shutil
 import glob
+
+# 🚨 CRITICAL: Override tempfile BEFORE any other imports
+import tempfile
+# Force ALL temporary operations to use runpod-volume
+os.environ['TMPDIR'] = '/runpod-volume/tmp'
+os.environ['TEMP'] = '/runpod-volume/tmp'
+os.environ['TMP'] = '/runpod-volume/tmp'
+tempfile.tempdir = '/runpod-volume/tmp'
+
+# Create the directory immediately
+os.makedirs('/runpod-volume/tmp', exist_ok=True)
+
 from huggingface_hub import login
 from diffusers import StableDiffusion3Pipeline
 import torch
@@ -75,9 +87,7 @@ os.environ["XDG_CONFIG_HOME"] = "/runpod-volume/hf_home"
 # Additional environment variables to ensure everything saves to runpod-volume
 os.environ['TORCH_HOME'] = '/runpod-volume/torch_cache'
 os.environ['PYTORCH_KERNEL_CACHE_PATH'] = '/runpod-volume/torch_cache'
-os.environ['TMPDIR'] = '/runpod-volume/tmp'
-os.environ['TEMP'] = '/runpod-volume/tmp'
-os.environ['TMP'] = '/runpod-volume/tmp'
+# TMPDIR variables already set at top of file
 
 # Create all necessary directories
 os.makedirs('/runpod-volume/hf_home', exist_ok=True)
@@ -124,14 +134,9 @@ try:
 except Exception as e:
     print(f"⚠️ Error creating symlinks: {e}")
 
-# 🎯 TARGETED FIX: Override Python's tempfile module to use runpod-volume
-try:
-    import tempfile
-    # Force all temporary file operations to use our directory
-    tempfile.tempdir = '/runpod-volume/tmp'
-    print(f"🎯 Set tempfile.tempdir to: {tempfile.tempdir}")
-except Exception as e:
-    print(f"⚠️ Could not override tempfile directory: {e}")
+# Verify tempfile override is working
+print(f"🎯 tempfile.tempdir confirmed: {tempfile.tempdir}")
+print(f"🎯 TMPDIR environment: {os.environ.get('TMPDIR')}")
 
 MODEL_DIR = "/runpod-volume/models"
 MODEL_INDEX = os.path.join(MODEL_DIR, "model_index.json")
