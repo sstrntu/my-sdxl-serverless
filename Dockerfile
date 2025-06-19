@@ -23,8 +23,9 @@ COPY download_model.py /workspace/download_model.py
 ARG HF_TOKEN
 ENV HF_TOKEN=${HF_TOKEN}
 
-# Download the model at build time using the token
-RUN python /workspace/download_model.py
+# Debug: print first 8 characters of HF_TOKEN before downloading the model
+RUN echo "HF_TOKEN starts with: ${HF_TOKEN:0:8}" && \
+    python /workspace/download_model.py
 
 # Copy your server script
 COPY server.py /app/server.py
