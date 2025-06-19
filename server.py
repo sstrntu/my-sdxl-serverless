@@ -7,6 +7,11 @@ from io import BytesIO
 import subprocess
 import sys
 
+# Set HuggingFace cache directory to root filesystem
+os.environ['HF_HOME'] = '/hf_cache'
+os.environ['TRANSFORMERS_CACHE'] = '/hf_cache/transformers'
+os.environ['HF_HUB_CACHE'] = '/hf_cache/hub'
+
 # Model configuration
 MODEL_PATH = "/models"
 MODEL_INDEX = os.path.join(MODEL_PATH, "model_index.json")
