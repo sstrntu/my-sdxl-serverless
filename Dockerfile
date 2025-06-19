@@ -12,15 +12,12 @@ RUN pip install --upgrade pip && \
 
 WORKDIR /workspace
 
+# Copy both scripts
 COPY download_model.py /workspace/download_model.py
-
-# Accept HF_TOKEN as a build argument and set it as environment variable
-ARG HF_TOKEN
-ENV HF_TOKEN=${HF_TOKEN}
-
-# Download the model using the provided token
-RUN python /workspace/download_model.py
-
 COPY server.py /app/server.py
+
+# Create models directory
+RUN mkdir -p /workspace/models
+
 WORKDIR /app
 CMD ["python", "server.py"]
