@@ -21,10 +21,10 @@ COPY download_model.py /workspace/download_model.py
 
 # Accept HF_TOKEN as a build argument
 ARG HF_TOKEN
-ENV HF=${HF_TOKEN}
+ENV HF_TOKEN=${HF_TOKEN}
 
 # Debug: print first 8 characters of HF_TOKEN only
-RUN echo ${HF}
+RUN echo "HF_TOKEN starts with: ${HF_TOKEN}"
 
 # (Comment out or remove model download and server copy for now)
 RUN python /workspace/download_model.py
