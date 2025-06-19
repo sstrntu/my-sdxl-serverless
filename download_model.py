@@ -70,6 +70,7 @@ os.environ["HF_HOME"] = "/runpod-volume/hf_home"
 os.environ["HF_HUB_CACHE"] = "/runpod-volume/hf_cache"
 os.environ["TRANSFORMERS_CACHE"] = "/runpod-volume/hf_cache"
 os.environ["XDG_CACHE_HOME"] = "/runpod-volume/hf_cache"
+os.environ["XDG_CONFIG_HOME"] = "/runpod-volume/hf_home"
 
 # Additional environment variables to ensure everything saves to runpod-volume
 os.environ['TORCH_HOME'] = '/runpod-volume/torch_cache'
@@ -121,16 +122,17 @@ else:
             "Request access: https://huggingface.co/stabilityai/stable-diffusion-3.5-large"
         )
     
-    print("Logging into Hugging Face...")
-    login(token=hf_token, add_to_git_credential=False)
-    
     print("Downloading Stable Diffusion 3.5 Large model...")
     print("⏳ This may take 10-20 minutes depending on connection speed...")
+    print("🔑 Using token directly to avoid login disk issues...")
     
     try:
+        # Skip login entirely - use token directly in from_pretrained
         pipe = StableDiffusion3Pipeline.from_pretrained(
             "stabilityai/stable-diffusion-3.5-large",
-            torch_dtype=torch.bfloat16
+            torch_dtype=torch.bfloat16,
+            token=hf_token,  # Pass token directly - no login needed
+            cache_dir='/runpod-volume/hf_cache'
         )
         
         # Check space before saving
