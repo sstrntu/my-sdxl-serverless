@@ -7,24 +7,20 @@ from io import BytesIO
 import subprocess
 import sys
 
-# Set HuggingFace cache directory to RunPod network volume
-os.environ['HF_HOME'] = '/runpod-volume/hf_cache'
-os.environ['TRANSFORMERS_CACHE'] = '/runpod-volume/hf_cache/transformers'
-os.environ['HF_HUB_CACHE'] = '/runpod-volume/hf_cache/hub'
+# ✅ Redirect all Hugging Face cache, auth, and token writes to /runpod-volume
+os.environ["HF_HOME"] = "/runpod-volume/hf_home"
+os.environ["HF_HUB_CACHE"] = "/runpod-volume/hf_cache"
+os.environ["TRANSFORMERS_CACHE"] = "/runpod-volume/hf_cache"
+os.environ["XDG_CACHE_HOME"] = "/runpod-volume/hf_cache"
 
 # Additional environment variables to ensure everything saves to runpod-volume
 os.environ['TORCH_HOME'] = '/runpod-volume/torch_cache'
 os.environ['PYTORCH_KERNEL_CACHE_PATH'] = '/runpod-volume/torch_cache'
-os.environ['XDG_CACHE_HOME'] = '/runpod-volume/cache'
-
-# Force HuggingFace config and token storage to runpod-volume
-os.environ['HF_TOKEN_PATH'] = '/runpod-volume/hf_cache/token'
-os.environ['HOME'] = '/runpod-volume'  # This forces ~/.huggingface to be in runpod-volume
 
 # Create additional cache directories
+os.makedirs('/runpod-volume/hf_home', exist_ok=True)
+os.makedirs('/runpod-volume/hf_cache', exist_ok=True)
 os.makedirs('/runpod-volume/torch_cache', exist_ok=True)
-os.makedirs('/runpod-volume/cache', exist_ok=True)
-os.makedirs('/runpod-volume/.huggingface', exist_ok=True)
 
 # Model configuration
 MODEL_PATH = "/runpod-volume/models"
