@@ -161,7 +161,21 @@ else:
     os.makedirs('/runpod-volume/hf_cache/models', exist_ok=True)
     os.makedirs('/runpod-volume/hf_cache/transformers', exist_ok=True)
     os.makedirs('/runpod-volume/hf_cache/hub', exist_ok=True)
-    os.makedirs(MODEL_DIR, exist_ok=True)
+    
+    # Ensure MODEL_DIR has proper permissions and exists
+    print(f"📁 Creating model directory: {MODEL_DIR}")
+    os.makedirs(MODEL_DIR, exist_ok=True, mode=0o777)
+    
+    # Test write permissions
+    test_file = os.path.join(MODEL_DIR, "test_write.txt")
+    try:
+        with open(test_file, "w") as f:
+            f.write("test")
+        os.remove(test_file)
+        print(f"✅ Write permissions confirmed for {MODEL_DIR}")
+    except Exception as e:
+        print(f"❌ Write permission test failed for {MODEL_DIR}: {e}")
+        raise
     
     hf_token = os.environ.get("HF_TOKEN")
     if not hf_token:
@@ -190,8 +204,32 @@ else:
         check_available_space()
         
         print("Saving model to local directory...")
-        pipe.save_pretrained(MODEL_DIR)
-        print("✅ Model downloaded and saved successfully.")
+        print(f"📍 Saving to: {MODEL_DIR}")
+        
+        # Check disk space right before save
+        usage = get_disk_usage('/runpod-volume')
+        if usage:
+            print(f"💾 Available space: {usage['free_gb']}GB")
+        
+        # Save with error handling
+        try:
+            pipe.save_pretrained(MODEL_DIR)
+            print("✅ Model downloaded and saved successfully.")
+        except OSError as e:
+            if e.errno == 122:  # Disk quota exceeded
+                print(f"❌ Disk quota exceeded during save. Available space: {usage['free_gb'] if usage else 'unknown'}GB")
+                print("🔍 Checking what's using space...")
+                
+                # Show what's taking up space in runpod-volume
+                try:
+                    import subprocess
+                    result = subprocess.run(['du', '-sh', '/runpod-volume/*'], 
+                                          capture_output=True, text=True, shell=True)
+                    print("📊 Space usage breakdown:")
+                    print(result.stdout)
+                except:
+                    pass
+            raise
         
         # Check final space
         print("\n📊 Final disk space:")
