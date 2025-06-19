@@ -5,12 +5,12 @@ from huggingface_hub import login
 from diffusers import StableDiffusion3Pipeline
 import torch
 
-# Set HuggingFace cache directory to root filesystem
-os.environ['HF_HOME'] = '/hf_cache'
-os.environ['TRANSFORMERS_CACHE'] = '/hf_cache/transformers'
-os.environ['HF_HUB_CACHE'] = '/hf_cache/hub'
+# Set HuggingFace cache directory to RunPod network volume
+os.environ['HF_HOME'] = '/runpod-volume/hf_cache'
+os.environ['TRANSFORMERS_CACHE'] = '/runpod-volume/hf_cache/transformers'
+os.environ['HF_HUB_CACHE'] = '/runpod-volume/hf_cache/hub'
 
-MODEL_DIR = "/models"
+MODEL_DIR = "/runpod-volume/models"
 MODEL_INDEX = os.path.join(MODEL_DIR, "model_index.json")
 
 if os.path.exists(MODEL_INDEX):
@@ -18,10 +18,10 @@ if os.path.exists(MODEL_INDEX):
 else:
     print("Model not found, downloading...")
     
-    # Create cache directories
-    os.makedirs('/hf_cache', exist_ok=True)
-    os.makedirs('/hf_cache/transformers', exist_ok=True)
-    os.makedirs('/hf_cache/hub', exist_ok=True)
+    # Create cache directories on RunPod network volume
+    os.makedirs('/runpod-volume/hf_cache', exist_ok=True)
+    os.makedirs('/runpod-volume/hf_cache/transformers', exist_ok=True)
+    os.makedirs('/runpod-volume/hf_cache/hub', exist_ok=True)
     os.makedirs(MODEL_DIR, exist_ok=True)
     
     hf_token = os.environ.get("HF_TOKEN")
@@ -36,9 +36,9 @@ else:
     print("Logging into Hugging Face...")
     login(token=hf_token)
     
-    print("Downloading Stable Diffusion 3.5 Large model...")
+    print("Downloading Stable Diffusion 3 Medium model...")
     pipe = StableDiffusion3Pipeline.from_pretrained(
-        "stabilityai/stable-diffusion-3.5-large",
+        "stabilityai/stable-diffusion-3-medium-diffusers",
         torch_dtype=torch.bfloat16
     )
     

@@ -16,8 +16,7 @@ WORKDIR /workspace
 COPY download_model.py /workspace/download_model.py
 COPY server.py /app/server.py
 
-# Create models directory
-RUN mkdir -p /models
+# Note: Model and cache directories will be created on RunPod network volume at runtime
 
 WORKDIR /app
 CMD ["python", "server.py"]

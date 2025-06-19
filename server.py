@@ -7,13 +7,13 @@ from io import BytesIO
 import subprocess
 import sys
 
-# Set HuggingFace cache directory to root filesystem
-os.environ['HF_HOME'] = '/hf_cache'
-os.environ['TRANSFORMERS_CACHE'] = '/hf_cache/transformers'
-os.environ['HF_HUB_CACHE'] = '/hf_cache/hub'
+# Set HuggingFace cache directory to RunPod network volume
+os.environ['HF_HOME'] = '/runpod-volume/hf_cache'
+os.environ['TRANSFORMERS_CACHE'] = '/runpod-volume/hf_cache/transformers'
+os.environ['HF_HUB_CACHE'] = '/runpod-volume/hf_cache/hub'
 
 # Model configuration
-MODEL_PATH = "/models"
+MODEL_PATH = "/runpod-volume/models"
 MODEL_INDEX = os.path.join(MODEL_PATH, "model_index.json")
 
 def download_model_if_needed():
@@ -67,11 +67,11 @@ def handler(job):
         if not negative_prompt:
             return {"error": "Missing 'negative_prompt' in input"}
 
-        # Optional parameters with tuned defaults for SD 3.5 Large
+        # Optional parameters with tuned defaults for SD 3 Medium
         width = job_input.get("width", 1024)
         height = job_input.get("height", 1024)
         num_inference_steps = job_input.get("num_inference_steps", 50)
-        guidance_scale = job_input.get("guidance_scale", 3.5)  # Optimal for SD3.5 Large
+        guidance_scale = job_input.get("guidance_scale", 7.0)  # Optimal for SD3 Medium
         seed = job_input.get("seed", None)
 
         # Set seed for reproducibility
