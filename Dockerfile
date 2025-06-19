@@ -8,17 +8,17 @@ RUN apt-get update && apt-get install -y \
 
 # Install Python dependencies
 RUN pip install --upgrade pip && \
-    pip install torch torchvision torchaudio diffusers transformers accelerate safetensors flask huggingface_hub
+    pip install torch torchvision torchaudio diffusers transformers accelerate safetensors huggingface_hub runpod
 
 WORKDIR /workspace
 
 COPY download_model.py /workspace/download_model.py
 
-# Accept HF as a build argument and set HF_TOKEN for the script
-# ARG HF
-# ENV HF_TOKEN=${HF}
+# Accept HF_TOKEN as a build argument and set it as environment variable
+ARG HF_TOKEN
+ENV HF_TOKEN=${HF_TOKEN}
 
-# Download the model if not already present
+# Download the model using the provided token
 RUN python /workspace/download_model.py
 
 COPY server.py /app/server.py
