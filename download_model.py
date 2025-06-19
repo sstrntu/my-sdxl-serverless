@@ -213,22 +213,65 @@ else:
         
         # Save with error handling
         try:
-            pipe.save_pretrained(MODEL_DIR)
-            print("✅ Model downloaded and saved successfully.")
-        except OSError as e:
-            if e.errno == 122:  # Disk quota exceeded
-                print(f"❌ Disk quota exceeded during save. Available space: {usage['free_gb'] if usage else 'unknown'}GB")
-                print("🔍 Checking what's using space...")
+            # Try to save individual components to isolate the issue
+            print("🔍 Attempting to save pipeline components individually...")
+            
+            # First, try saving just the config manually
+            test_config_path = os.path.join(MODEL_DIR, "test_config.json")
+            try:
+                import json
+                test_config = {"test": "config"}
+                with open(test_config_path, "w") as f:
+                    json.dump(test_config, f)
+                os.remove(test_config_path)
+                print("✅ Manual JSON write test successful")
+            except Exception as json_err:
+                print(f"❌ Manual JSON write failed: {json_err}")
                 
-                # Show what's taking up space in runpod-volume
+                # Check filesystem stats
                 try:
                     import subprocess
-                    result = subprocess.run(['du', '-sh', '/runpod-volume/*'], 
-                                          capture_output=True, text=True, shell=True)
-                    print("📊 Space usage breakdown:")
+                    result = subprocess.run(['df', '-i', '/runpod-volume'], 
+                                          capture_output=True, text=True)
+                    print("📊 Filesystem inode usage:")
                     print(result.stdout)
+                    
+                    result2 = subprocess.run(['stat', '-f', '/runpod-volume'], 
+                                           capture_output=True, text=True)
+                    print("📊 Filesystem stats:")
+                    print(result2.stdout)
                 except:
                     pass
+                raise json_err
+            
+            # If manual test passes, try the actual save
+            pipe.save_pretrained(MODEL_DIR)
+            print("✅ Model downloaded and saved successfully.")
+            
+        except OSError as e:
+            print(f"❌ OSError during save: {e}")
+            print(f"Error code: {e.errno}")
+            print(f"Available space: {usage['free_gb'] if usage else 'unknown'}GB")
+            
+            # More detailed filesystem analysis
+            try:
+                import subprocess
+                commands = [
+                    ('df -h /runpod-volume', 'Disk space'),
+                    ('df -i /runpod-volume', 'Inode usage'),
+                    ('mount | grep runpod', 'Mount info'),
+                    ('ls -la /runpod-volume/', 'Directory contents')
+                ]
+                
+                for cmd, desc in commands:
+                    try:
+                        result = subprocess.run(cmd.split(), capture_output=True, text=True)
+                        print(f"📊 {desc}:")
+                        print(result.stdout)
+                    except:
+                        pass
+            except:
+                pass
             raise
         
         # Check final space
