@@ -5,7 +5,7 @@ from diffusers import StableDiffusion3Pipeline
 from huggingface_hub import login
 import torch
 
-hf_token = os.environ.get("HF_TOKEN")
+hf_token = os.environ.get("HF")
 if not hf_token:
     raise ValueError(
         "HF_TOKEN environment variable is required.\n"
