@@ -1,61 +1,71 @@
-import runpod
+from flask import Flask, request, jsonify
 from diffusers import StableDiffusion3Pipeline
 import torch
 import os
 import base64
-import io
+from io import BytesIO
 
-# Load SD 3.5 Large model from /workspace/models/ (required for RunPod Serverless)
+app = Flask(__name__)
+
+# Load model from local path
 MODEL_PATH = "/workspace/models"
-
-print(f"🚀 Loading SD 3.5 Large model from: {MODEL_PATH}")
+print(f"🚀 Loading model from: {MODEL_PATH}")
 pipe = StableDiffusion3Pipeline.from_pretrained(
     MODEL_PATH,
     torch_dtype=torch.bfloat16
 ).to("cuda")
 
-def generate(job):
-    """RunPod serverless handler function"""
+@app.route("/", methods=["POST"])
+def generate():
     try:
-        job_input = job["input"]
+        input_data = request.json.get("input", {})
+        
+        # Required parameters (no defaults)
+        prompt = input_data.get("prompt")
+        negative_prompt = input_data.get("negative_prompt")
 
-        # Prompt is required
-        prompt = job_input.get("prompt")
         if not prompt:
-            return {"error": "Missing 'prompt' parameter in input."}
+            return jsonify({"error": "Missing 'prompt' in input"}), 400
+        if not negative_prompt:
+            return jsonify({"error": "Missing 'negative_prompt' in input"}), 400
 
-        negative_prompt = job_input.get("negative_prompt", "")
-        width = job_input.get("width", 1024)
-        height = job_input.get("height", 1024)
-        num_inference_steps = job_input.get("num_inference_steps", 28)
-        guidance_scale = job_input.get("guidance_scale", 3.5)
+        # Optional parameters with tuned defaults
+        width = input_data.get("width", 1024)
+        height = input_data.get("height", 1024)
+        num_inference_steps = input_data.get("num_inference_steps", 50)
+        guidance_scale = input_data.get("guidance_scale", 3.5)  # Recommended for SD3.5 Large
+        strength = input_data.get("strength", 0.9)
+        seed = input_data.get("seed", None)
 
-        print(f"Generating image for prompt: {prompt[:50]}...")
+        # Set seed for reproducibility
+        if seed is not None:
+            generator = torch.Generator("cuda").manual_seed(seed)
+        else:
+            generator = None
 
+        # Generate image
         image = pipe(
             prompt=prompt,
             negative_prompt=negative_prompt,
             width=width,
             height=height,
             num_inference_steps=num_inference_steps,
-            guidance_scale=guidance_scale
+            guidance_scale=guidance_scale,
+            generator=generator
         ).images[0]
 
-        # Convert image to base64 for RunPod response
-        buffer = io.BytesIO()
-        image.save(buffer, format="PNG")
-        image_base64 = base64.b64encode(buffer.getvalue()).decode()
+        # Convert image to base64
+        buffered = BytesIO()
+        image.save(buffered, format="PNG")
+        image_base64 = base64.b64encode(buffered.getvalue()).decode("utf-8")
 
-        print("✅ Image generated successfully")
-
-        return {
+        return jsonify({
             "image": image_base64,
-            "message": "Image generated successfully"
-        }
-
+            "message": "✅ Image generation complete"
+        })
+    
     except Exception as e:
-        print(f"❌ Error: {str(e)}")
-        return {"error": str(e)}
+        return jsonify({"error": str(e)}), 500
 
-print("🚀 Starting RunPod Serverless handler...")
-runpod.serverless.start({"handler": generate})
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=3000)

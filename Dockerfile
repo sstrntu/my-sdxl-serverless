@@ -8,24 +8,30 @@ RUN apt-get update && apt-get install -y \
 RUN ln -sf /usr/bin/python3.10 /usr/bin/python && \
     ln -sf /usr/bin/pip3 /usr/bin/pip
 
-# Install Python packages
+# Install dependencies
 RUN pip install --upgrade pip && \
     pip install torch torchvision torchaudio \
-    diffusers transformers accelerate safetensors flask runpod
+    diffusers transformers accelerate safetensors flask huggingface_hub
 
-# Create workspace dir
-RUN mkdir -p /workspace/models
+# Create workspace for model and app
+WORKDIR /workspace
 
+# Pre-download SDXL 3.5 model at build time using build argument
+ARG HF_TOKEN
+RUN --mount=type=secret,id=HF_TOKEN \
+    python -c "\
+import os; \
+from huggingface_hub import login; \
+from diffusers import StableDiffusion3Pipeline; \
+login(token=open('/run/secrets/HF_TOKEN').read().strip()); \
+pipe = StableDiffusion3Pipeline.from_pretrained( \
+    'stabilityai/stable-diffusion-3.5-large', torch_dtype='torch.bfloat16' \
+); \
+pipe.save_pretrained('/workspace/models')"
+
+# Copy your server script
+COPY server.py /app/server.py
 WORKDIR /app
-COPY server.py .
-COPY download_model.py .
 
-# Run download_model.py at container start if model not found
-CMD bash -c '\
-if [ ! -f "/workspace/models/model_index.json" ]; then \
-    echo "⚙️ Model not found, running download_model.py"; \
-    python download_model.py; \
-else \
-    echo "✅ Model already exists. Skipping download."; \
-fi && \
-echo "🚀 Starting server..." && python server.py'
+# Run the app
+CMD ["python", "server.py"]
