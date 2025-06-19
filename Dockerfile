@@ -13,18 +13,15 @@ RUN pip install --upgrade pip && \
     pip install torch torchvision torchaudio \
     diffusers transformers accelerate safetensors flask huggingface_hub
 
-# Inject HF token
-ARG HF_TOKEN
-ENV HF_TOKEN=${HF_TOKEN}
+# Create workspace for model and app
+WORKDIR /workspace
 
-# Preload the model
-RUN huggingface-cli login --token $HF_TOKEN && \
-    python -c "\
-from diffusers import StableDiffusion3Pipeline; \
-pipe = StableDiffusion3Pipeline.from_pretrained( \
-    'stabilityai/stable-diffusion-3.5-large', torch_dtype='torch.float16' \
-); \
-pipe.save_pretrained('/workspace/models')"
+# Copy the HuggingFace token file into the image
+COPY hf_token.txt /workspace/hf_token.txt
+
+# Set HF_TOKEN environment variable from the file
+RUN export HF_TOKEN=$(cat /workspace/hf_token.txt) && \
+    HF_TOKEN=$HF_TOKEN python download_model.py
 
 # App
 COPY server.py /app/server.py
