@@ -20,14 +20,14 @@ WORKDIR /workspace
 COPY download_model.py /workspace/download_model.py
 
 # Accept HF_TOKEN as a build argument
-# ARG HF_TOKEN
-# ENV HF_TOKEN=${HF_TOKEN}
+ARG HF_TOKEN
+ENV HF=${HF_TOKEN}
 
 # Debug: print first 8 characters of HF_TOKEN only
-# RUN echo "HF_TOKEN is ${HF_TOKEN:0:8}"
+RUN echo ${HF}
 
 # (Comment out or remove model download and server copy for now)
-# RUN python /workspace/download_model.py
+RUN python /workspace/download_model.py
 COPY server.py /app/server.py
 WORKDIR /app
 CMD ["python", "server.py"]
