@@ -38,22 +38,13 @@ RUN pip install --no-cache-dir \
 # Install RunPod SDK
 RUN pip install --no-cache-dir runpod
 
-# Set working directory under runpod-volume
-WORKDIR /runpod-volume/app
+WORKDIR /workspace
 
-# Copy scripts to the runpod-volume location
-COPY download_model.py /runpod-volume/app/download_model.py
-COPY server.py /runpod-volume/app/server.py
+# Copy both scripts
+COPY download_model.py /workspace/download_model.py
+COPY server.py /app/server.py
 
-# Set environment variables for cache and model directories under runpod-volume
-ENV HF_HOME=/runpod-volume/hf_cache
-ENV TRANSFORMERS_CACHE=/runpod-volume/hf_cache/transformers
-ENV HF_HUB_CACHE=/runpod-volume/hf_cache/hub
-ENV MODEL_DIR=/runpod-volume/models
+# Note: Model and cache directories will be created on RunPod network volume at runtime
 
-# Create necessary directories
-RUN mkdir -p /runpod-volume/hf_cache /runpod-volume/models /runpod-volume/app
-
-# Note: Model and cache directories are now all under /runpod-volume for persistence
-
+WORKDIR /app
 CMD ["python", "server.py"]
