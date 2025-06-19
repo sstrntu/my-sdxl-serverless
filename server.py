@@ -17,9 +17,14 @@ os.environ['TORCH_HOME'] = '/runpod-volume/torch_cache'
 os.environ['PYTORCH_KERNEL_CACHE_PATH'] = '/runpod-volume/torch_cache'
 os.environ['XDG_CACHE_HOME'] = '/runpod-volume/cache'
 
+# Force HuggingFace config and token storage to runpod-volume
+os.environ['HF_TOKEN_PATH'] = '/runpod-volume/hf_cache/token'
+os.environ['HOME'] = '/runpod-volume'  # This forces ~/.huggingface to be in runpod-volume
+
 # Create additional cache directories
 os.makedirs('/runpod-volume/torch_cache', exist_ok=True)
 os.makedirs('/runpod-volume/cache', exist_ok=True)
+os.makedirs('/runpod-volume/.huggingface', exist_ok=True)
 
 # Model configuration
 MODEL_PATH = "/runpod-volume/models"
