@@ -76,6 +76,8 @@ os.environ["XDG_CONFIG_HOME"] = "/runpod-volume/hf_home"
 os.environ['TORCH_HOME'] = '/runpod-volume/torch_cache'
 os.environ['PYTORCH_KERNEL_CACHE_PATH'] = '/runpod-volume/torch_cache'
 os.environ['TMPDIR'] = '/runpod-volume/tmp'
+os.environ['TEMP'] = '/runpod-volume/tmp'
+os.environ['TMP'] = '/runpod-volume/tmp'
 
 # Create all necessary directories
 os.makedirs('/runpod-volume/hf_home', exist_ok=True)
@@ -121,6 +123,15 @@ try:
     
 except Exception as e:
     print(f"⚠️ Error creating symlinks: {e}")
+
+# 🎯 TARGETED FIX: Override Python's tempfile module to use runpod-volume
+try:
+    import tempfile
+    # Force all temporary file operations to use our directory
+    tempfile.tempdir = '/runpod-volume/tmp'
+    print(f"🎯 Set tempfile.tempdir to: {tempfile.tempdir}")
+except Exception as e:
+    print(f"⚠️ Could not override tempfile directory: {e}")
 
 MODEL_DIR = "/runpod-volume/models"
 MODEL_INDEX = os.path.join(MODEL_DIR, "model_index.json")
