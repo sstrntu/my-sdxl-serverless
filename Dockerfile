@@ -8,7 +8,8 @@ RUN apt-get update && apt-get install -y \
 
 # Install Python dependencies
 RUN pip install --upgrade pip && \
-    pip install torch torchvision torchaudio diffusers transformers accelerate safetensors huggingface_hub runpod
+    pip install torch torchvision torchaudio diffusers transformers accelerate safetensors huggingface_hub runpod \
+    protobuf>=3.20.0 sentencepiece
 
 WORKDIR /workspace
 
