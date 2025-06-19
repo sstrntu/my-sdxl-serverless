@@ -36,9 +36,9 @@ else:
     print("Logging into Hugging Face...")
     login(token=hf_token)
     
-    print("Downloading Stable Diffusion 3 Medium model...")
+    print("Downloading Stable Diffusion 3.5 Large model...")
     pipe = StableDiffusion3Pipeline.from_pretrained(
-        "stabilityai/stable-diffusion-3-medium-diffusers",
+        "stabilityai/stable-diffusion-3.5-large",
         torch_dtype=torch.bfloat16
     )
     
