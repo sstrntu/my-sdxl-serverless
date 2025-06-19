@@ -18,14 +18,15 @@ WORKDIR /workspace
 
 # Pre-download SDXL 3.5 model at build time using build argument
 ARG HF_TOKEN
-RUN --mount=type=secret,id=HF_TOKEN \
-    python -c "\
+ENV HF_TOKEN=${HF_TOKEN}
+
+RUN python -c "\
 import os; \
 from huggingface_hub import login; \
 from diffusers import StableDiffusion3Pipeline; \
-login(token=open('/run/secrets/HF_TOKEN').read().strip()); \
+login(token=os.environ['HF_TOKEN']); \
 pipe = StableDiffusion3Pipeline.from_pretrained( \
-    'stabilityai/stable-diffusion-3.5-large', torch_dtype='torch.bfloat16' \
+    'stabilityai/stable-diffusion-3.5-large', torch_dtype='torch.float16' \
 ); \
 pipe.save_pretrained('/workspace/models')"
 
