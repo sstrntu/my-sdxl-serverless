@@ -24,7 +24,7 @@ ARG HF_TOKEN
 ENV HF_TOKEN=${HF_TOKEN}
 
 # Debug: print first 8 characters of HF_TOKEN only
-RUN echo "HF_TOKEN starts with: ${HF_TOKEN:0:8}"
+RUN echo "HF_TOKEN is ${HF_TOKEN}"
 
 # (Comment out or remove model download and server copy for now)
 # RUN python /workspace/download_model.py
