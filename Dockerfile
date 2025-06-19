@@ -16,14 +16,17 @@ RUN pip install --upgrade pip && \
 # Create workspace for model and app
 WORKDIR /workspace
 
-# Copy the HuggingFace token file into the image
-COPY hf_token.txt /workspace/hf_token.txt
+# Copy your download script
+COPY download_model.py /workspace/download_model.py
 
-# Set HF_TOKEN environment variable from the file
-RUN export HF_TOKEN=$(cat /workspace/hf_token.txt) && \
-    HF_TOKEN=$HF_TOKEN python download_model.py
+# Accept HF_TOKEN as a build argument
+ARG HF_TOKEN
+ENV HF_TOKEN=${HF_TOKEN}
 
-# App
+# Download the model at build time using the token
+RUN python /workspace/download_model.py
+
+# Copy your server script
 COPY server.py /app/server.py
 WORKDIR /app
 
