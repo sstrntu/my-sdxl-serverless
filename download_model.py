@@ -122,7 +122,7 @@ else:
         )
     
     print("Logging into Hugging Face...")
-    login(token=hf_token)
+    login(token=hf_token, add_to_git_credential=False)
     
     print("Downloading Stable Diffusion 3.5 Large model...")
     print("⏳ This may take 10-20 minutes depending on connection speed...")
