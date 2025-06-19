@@ -67,7 +67,7 @@ def check_available_space():
 
 # ✅ Redirect all Hugging Face cache, auth, and token writes to /runpod-volume
 os.environ["HF_HOME"] = "/runpod-volume/hf_home"
-os.environ["HF_HUB_CACHE"] = "/runpod-volume/hf_cache"
+os.environ["HF_HUB_CACHE"] = "/runpod-volume/hf_cache/hub"
 os.environ["TRANSFORMERS_CACHE"] = "/runpod-volume/hf_cache"
 os.environ["XDG_CACHE_HOME"] = "/runpod-volume/hf_cache"
 os.environ["XDG_CONFIG_HOME"] = "/runpod-volume/hf_home"
@@ -82,6 +82,45 @@ os.makedirs('/runpod-volume/hf_home', exist_ok=True)
 os.makedirs('/runpod-volume/hf_cache', exist_ok=True)
 os.makedirs('/runpod-volume/torch_cache', exist_ok=True)
 os.makedirs('/runpod-volume/tmp', exist_ok=True)
+
+# 🚨 AGGRESSIVE FIX: Create symlinks for common cache locations that might be hardcoded
+try:
+    # Remove and recreate common cache directories as symlinks to runpod-volume
+    import subprocess
+    
+    # List of potential hardcoded cache paths that might be causing issues
+    cache_paths_to_redirect = [
+        '/root/.cache',
+        '/home/.cache', 
+        '/.cache',
+        '/workspace/.cache'
+    ]
+    
+    for cache_path in cache_paths_to_redirect:
+        try:
+            # Remove if exists
+            if os.path.exists(cache_path):
+                if os.path.islink(cache_path):
+                    os.unlink(cache_path)
+                elif os.path.isdir(cache_path):
+                    shutil.rmtree(cache_path)
+                else:
+                    os.remove(cache_path)
+            
+            # Create parent directory if needed
+            parent_dir = os.path.dirname(cache_path)
+            if parent_dir and not os.path.exists(parent_dir):
+                os.makedirs(parent_dir, exist_ok=True)
+            
+            # Create symlink to runpod-volume
+            os.symlink('/runpod-volume/hf_cache', cache_path)
+            print(f"🔗 Created symlink: {cache_path} -> /runpod-volume/hf_cache")
+            
+        except Exception as e:
+            print(f"⚠️ Could not create symlink for {cache_path}: {e}")
+    
+except Exception as e:
+    print(f"⚠️ Error creating symlinks: {e}")
 
 MODEL_DIR = "/runpod-volume/models"
 MODEL_INDEX = os.path.join(MODEL_DIR, "model_index.json")
@@ -108,7 +147,7 @@ else:
         print("   SD3.5 Large requires ~12-15GB. Download may fail.")
     
     # Create cache directories on RunPod network volume
-    os.makedirs('/runpod-volume/hf_cache', exist_ok=True)
+    os.makedirs('/runpod-volume/hf_cache/models', exist_ok=True)
     os.makedirs('/runpod-volume/hf_cache/transformers', exist_ok=True)
     os.makedirs('/runpod-volume/hf_cache/hub', exist_ok=True)
     os.makedirs(MODEL_DIR, exist_ok=True)
@@ -132,7 +171,7 @@ else:
             "stabilityai/stable-diffusion-3.5-large",
             torch_dtype=torch.bfloat16,
             token=hf_token,  # Pass token directly - no login needed
-            cache_dir='/runpod-volume/hf_cache'
+            cache_dir='/runpod-volume/hf_cache/models'
         )
         
         # Check space before saving
