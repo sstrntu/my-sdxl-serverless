@@ -95,7 +95,7 @@ def load_model():
             cache_dir='/runpod-volume/hf_cache',
             low_cpu_mem_usage=True,
             device_map="balanced",  # Use balanced instead of cpu
-            variant="fp16",    # Use FP16 variant if available
+            # variant="fp16",    # Removed - not available for this model
         )
         
         print(f"📊 After balanced loading: {get_gpu_memory_info()}")
@@ -239,7 +239,7 @@ def handler(job):
 
         # Generate image with memory-efficient settings
         with torch.inference_mode():  # Disable gradient computation
-            image = pipe(
+            result = pipe(
                 prompt=prompt,
                 negative_prompt=negative_prompt,
                 width=width,
@@ -250,7 +250,13 @@ def handler(job):
                 # Memory efficient generation settings
                 output_type="pil",
                 return_dict=False,
-            )[0]
+            )
+            
+            # Handle different return types
+            if isinstance(result, list):
+                image = result[0]  # Take first image from list
+            else:
+                image = result
 
         # Immediate cleanup after generation
         clear_gpu_memory()
