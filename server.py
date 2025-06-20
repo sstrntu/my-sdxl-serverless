@@ -88,19 +88,19 @@ def load_model():
     try:
         print("💾 Loading model with aggressive 24GB optimizations...")
         
-        # Load entirely on CPU first to avoid any GPU memory allocation during loading
+        # Load with balanced device mapping (supported strategy)
         pipe = StableDiffusion3Pipeline.from_pretrained(
             MODEL_PATH,
             torch_dtype=torch.bfloat16,
             cache_dir='/runpod-volume/hf_cache',
             low_cpu_mem_usage=True,
-            device_map="cpu",  # Force CPU loading
+            device_map="balanced",  # Use balanced instead of cpu
             variant="fp16",    # Use FP16 variant if available
         )
         
-        print(f"📊 After CPU loading: {get_gpu_memory_info()}")
+        print(f"📊 After balanced loading: {get_gpu_memory_info()}")
         
-        # Enable all aggressive memory optimizations BEFORE moving to GPU
+        # Enable all aggressive memory optimizations AFTER loading
         print("🔧 Enabling maximum memory optimizations...")
         
         # Enable CPU offloading (most important for 24GB)
@@ -147,7 +147,42 @@ def load_model():
     except Exception as e:
         print(f"❌ Error during model loading: {e}")
         print(f"🔍 Error memory state: {get_gpu_memory_info()}")
-        raise
+        
+        # Fallback: try loading without device_map
+        print("💡 Trying fallback loading without device_map...")
+        clear_gpu_memory()
+        
+        try:
+            pipe = StableDiffusion3Pipeline.from_pretrained(
+                MODEL_PATH,
+                torch_dtype=torch.bfloat16,
+                cache_dir='/runpod-volume/hf_cache',
+                low_cpu_mem_usage=True,
+                # No device_map - let it load normally
+            )
+            
+            print(f"📊 After fallback loading: {get_gpu_memory_info()}")
+            
+            # Enable aggressive CPU offloading immediately
+            pipe.enable_model_cpu_offload()
+            print("✅ CPU offloading enabled (fallback)")
+            
+            # Enable all memory optimizations
+            if hasattr(pipe, 'enable_attention_slicing'):
+                pipe.enable_attention_slicing("max")
+                print("✅ Maximum attention slicing enabled")
+            
+            if hasattr(pipe, 'enable_vae_slicing'):
+                pipe.enable_vae_slicing()
+                print("✅ VAE slicing enabled")
+            
+            print(f"🎯 Fallback memory usage: {get_gpu_memory_info()}")
+            print("✅ Model loaded with fallback 24GB optimizations")
+            return pipe
+            
+        except Exception as fallback_error:
+            print(f"❌ Fallback loading also failed: {fallback_error}")
+            raise
 
 # Initialize model at startup
 print("🔄 Initializing model for 24GB GPU...")
