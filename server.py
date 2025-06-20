@@ -7,6 +7,9 @@ from io import BytesIO
 import subprocess
 import sys
 import gc
+import traceback
+import numpy as np
+from PIL import Image
 
 # ✅ Redirect all Hugging Face cache, auth, and token writes to /runpod-volume
 os.environ["HF_HOME"] = "/runpod-volume/hf_home"
@@ -47,6 +50,176 @@ def get_gpu_memory_info():
         free = total - allocated
         return f"GPU Memory: {allocated:.2f}GB allocated, {reserved:.2f}GB reserved, {free:.2f}GB free, {total:.2f}GB total"
     return "CUDA not available"
+
+def extract_image_from_result(result):
+    """
+    Enhanced function to extract PIL Image from various result types
+    Handles: tuples, lists, PIL Images, tensors, numpy arrays
+    """
+    try:
+        print(f"🔍 Extracting image from result type: {type(result)}")
+        
+        # Case 1: Direct PIL Image
+        if isinstance(result, Image.Image):
+            print("✅ Direct PIL Image detected")
+            return validate_image_mode(result)
+        
+        # Case 2: Tuple (common with return_dict=False)
+        elif isinstance(result, tuple):
+            print(f"📦 Tuple detected with {len(result)} elements")
+            for i, item in enumerate(result):
+                print(f"  - Element {i}: {type(item)}")
+                if isinstance(item, Image.Image):
+                    print(f"✅ Found PIL Image at index {i}")
+                    return validate_image_mode(item)
+                elif isinstance(item, list) and len(item) > 0:
+                    return extract_image_from_result(item[0])
+            # If no PIL Image found, try first element
+            if len(result) > 0:
+                return extract_image_from_result(result[0])
+        
+        # Case 3: List
+        elif isinstance(result, list):
+            print(f"📋 List detected with {len(result)} elements")
+            if len(result) == 0:
+                raise ValueError("Empty list returned from pipeline")
+            
+            for i, item in enumerate(result):
+                print(f"  - Element {i}: {type(item)}")
+                if isinstance(item, Image.Image):
+                    print(f"✅ Found PIL Image at index {i}")
+                    return validate_image_mode(item)
+            
+            # If no PIL Image found, try converting first element
+            return extract_image_from_result(result[0])
+        
+        # Case 4: PyTorch Tensor
+        elif isinstance(result, torch.Tensor):
+            print(f"🔥 PyTorch Tensor detected: {result.shape}")
+            return tensor_to_pil(result)
+        
+        # Case 5: NumPy Array
+        elif isinstance(result, np.ndarray):
+            print(f"📊 NumPy Array detected: {result.shape}")
+            return numpy_to_pil(result)
+        
+        # Case 6: Dictionary (if return_dict=True was used)
+        elif isinstance(result, dict):
+            print(f"📚 Dictionary detected with keys: {list(result.keys())}")
+            # Common keys for diffusion pipelines
+            for key in ['images', 'image', 'sample', 'samples']:
+                if key in result:
+                    print(f"🔑 Found key '{key}', extracting...")
+                    return extract_image_from_result(result[key])
+            raise ValueError(f"No image data found in dictionary keys: {list(result.keys())}")
+        
+        # Case 7: Unknown type
+        else:
+            print(f"❓ Unknown result type: {type(result)}")
+            # Try to access .images attribute (common in diffusion pipelines)
+            if hasattr(result, 'images'):
+                print("🔍 Found .images attribute")
+                return extract_image_from_result(result.images)
+            elif hasattr(result, 'image'):
+                print("🔍 Found .image attribute")
+                return extract_image_from_result(result.image)
+            else:
+                raise TypeError(f"Unsupported result type: {type(result)}")
+    
+    except Exception as e:
+        print(f"❌ Error in extract_image_from_result: {e}")
+        print(f"📋 Full traceback: {traceback.format_exc()}")
+        raise
+
+def validate_image_mode(image):
+    """Ensure image is in RGB or RGBA mode for PNG saving"""
+    try:
+        print(f"🎨 Validating image mode: {image.mode}, size: {image.size}")
+        
+        if image.mode in ['RGB', 'RGBA']:
+            print("✅ Image mode is valid for PNG")
+            return image
+        elif image.mode == 'L':  # Grayscale
+            print("🔄 Converting grayscale to RGB")
+            return image.convert('RGB')
+        elif image.mode == 'CMYK':
+            print("🔄 Converting CMYK to RGB")
+            return image.convert('RGB')
+        elif image.mode == 'P':  # Palette
+            print("🔄 Converting palette to RGB")
+            return image.convert('RGB')
+        else:
+            print(f"🔄 Converting {image.mode} to RGB")
+            return image.convert('RGB')
+    
+    except Exception as e:
+        print(f"❌ Error validating image mode: {e}")
+        raise
+
+def tensor_to_pil(tensor):
+    """Convert PyTorch tensor to PIL Image"""
+    try:
+        print(f"🔥 Converting tensor: shape={tensor.shape}, dtype={tensor.dtype}")
+        
+        # Move to CPU if on GPU
+        if tensor.is_cuda:
+            tensor = tensor.cpu()
+        
+        # Convert to numpy
+        if tensor.requires_grad:
+            tensor = tensor.detach()
+        
+        array = tensor.numpy()
+        
+        # Handle different tensor formats
+        if len(array.shape) == 4:  # Batch dimension
+            print("📦 Removing batch dimension")
+            array = array[0]
+        
+        if len(array.shape) == 3:
+            if array.shape[0] in [1, 3, 4]:  # Channels first
+                print("🔄 Converting from channels-first to channels-last")
+                array = np.transpose(array, (1, 2, 0))
+        
+        # Normalize to 0-255 if needed
+        if array.max() <= 1.0:
+            print("📊 Normalizing from [0,1] to [0,255]")
+            array = (array * 255).astype(np.uint8)
+        
+        return numpy_to_pil(array)
+    
+    except Exception as e:
+        print(f"❌ Error converting tensor to PIL: {e}")
+        raise
+
+def numpy_to_pil(array):
+    """Convert NumPy array to PIL Image"""
+    try:
+        print(f"📊 Converting numpy array: shape={array.shape}, dtype={array.dtype}")
+        
+        # Ensure uint8
+        if array.dtype != np.uint8:
+            if array.max() <= 1.0:
+                array = (array * 255).astype(np.uint8)
+            else:
+                array = array.astype(np.uint8)
+        
+        # Handle different array shapes
+        if len(array.shape) == 2:  # Grayscale
+            return Image.fromarray(array, mode='L')
+        elif len(array.shape) == 3:
+            if array.shape[2] == 1:  # Single channel
+                return Image.fromarray(array.squeeze(), mode='L')
+            elif array.shape[2] == 3:  # RGB
+                return Image.fromarray(array, mode='RGB')
+            elif array.shape[2] == 4:  # RGBA
+                return Image.fromarray(array, mode='RGBA')
+        
+        raise ValueError(f"Unsupported array shape: {array.shape}")
+    
+    except Exception as e:
+        print(f"❌ Error converting numpy to PIL: {e}")
+        raise
 
 def download_model_if_needed():
     """Download the model if it doesn't exist locally"""
@@ -202,19 +375,25 @@ def handler(job):
         
         # Required parameters
         prompt = job_input.get("prompt")
-        negative_prompt = job_input.get("negative_prompt")
-
         if not prompt:
             return {"error": "Missing 'prompt' in input"}
-        if not negative_prompt:
-            return {"error": "Missing 'negative_prompt' in input"}
 
-        # Optimized parameters for 24GB GPU - reduced defaults for memory efficiency
+        # Optional parameters with sensible defaults
+        negative_prompt = job_input.get("negative_prompt", "blurry, low quality, distorted, bad anatomy")
         width = job_input.get("width", 1024)
         height = job_input.get("height", 1024)
         num_inference_steps = job_input.get("num_inference_steps", 20)  # Reduced for 24GB
         guidance_scale = job_input.get("guidance_scale", 4.5)
         seed = job_input.get("seed", None)
+        
+        # Log the parameters being used
+        print(f"📝 Parameters:")
+        print(f"  - Prompt: {prompt[:50]}{'...' if len(prompt) > 50 else ''}")
+        print(f"  - Negative prompt: {negative_prompt}")
+        print(f"  - Resolution: {width}x{height}")
+        print(f"  - Steps: {num_inference_steps}")
+        print(f"  - Guidance: {guidance_scale}")
+        print(f"  - Seed: {seed}")
         
         # Limit maximum resolution for 24GB
         max_pixels = 1024 * 1024  # 1MP max for safety
@@ -252,20 +431,23 @@ def handler(job):
                 return_dict=False,
             )
             
-            # Handle different return types
-            if isinstance(result, list):
-                image = result[0]  # Take first image from list
-            else:
-                image = result
+            # Use enhanced image extraction
+            image = extract_image_from_result(result)
 
         # Immediate cleanup after generation
         clear_gpu_memory()
         print(f"🔍 Post-generation: {get_gpu_memory_info()}")
 
-        # Convert image to base64
-        buffered = BytesIO()
-        image.save(buffered, format="PNG", optimize=True)
-        image_base64 = base64.b64encode(buffered.getvalue()).decode("utf-8")
+        # Convert image to base64 with robust error handling
+        try:
+            buffered = BytesIO()
+            image.save(buffered, format="PNG", optimize=True)
+            image_base64 = base64.b64encode(buffered.getvalue()).decode("utf-8")
+            print(f"✅ Image successfully converted to base64 ({len(image_base64)} characters)")
+        except Exception as e:
+            print(f"❌ Error converting image to base64: {e}")
+            print(f"📋 Full traceback: {traceback.format_exc()}")
+            raise
 
         # Clean up image object
         del image
@@ -276,6 +458,8 @@ def handler(job):
             "image": image_base64,
             "message": "✅ Image generation complete (24GB optimized)",
             "parameters": {
+                "prompt": prompt,
+                "negative_prompt": negative_prompt,
                 "width": width,
                 "height": height,
                 "num_inference_steps": num_inference_steps,
@@ -287,6 +471,7 @@ def handler(job):
     except torch.cuda.OutOfMemoryError as e:
         print(f"❌ CUDA Out of Memory (24GB): {e}")
         print(f"🔍 Memory state: {get_gpu_memory_info()}")
+        print(f"📋 Full traceback: {traceback.format_exc()}")
         clear_gpu_memory()
         return {
             "error": f"GPU memory exceeded. Try smaller image size or fewer steps. Current memory: {get_gpu_memory_info()}"
@@ -294,6 +479,7 @@ def handler(job):
     except Exception as e:
         print(f"❌ Error in handler: {str(e)}")
         print(f"🔍 Error memory state: {get_gpu_memory_info()}")
+        print(f"📋 Full traceback: {traceback.format_exc()}")
         return {"error": str(e)}
 
 if __name__ == "__main__":

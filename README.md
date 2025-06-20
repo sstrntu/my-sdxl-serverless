@@ -55,9 +55,18 @@ The model will be automatically downloaded on first startup:
     "negative_prompt": "blurry, low quality, distorted",
     "width": 1024,
     "height": 1024,
-    "num_inference_steps": 28,
+    "num_inference_steps": 20,
     "guidance_scale": 4.5,
     "seed": 42
+  }
+}
+```
+
+**Minimal request (only prompt required):**
+```json
+{
+  "input": {
+    "prompt": "A beautiful landscape with mountains and lakes"
   }
 }
 ```
@@ -83,7 +92,7 @@ The model will be automatically downloaded on first startup:
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
 | `prompt` | string | **required** | Text description of desired image |
-| `negative_prompt` | string | **required** | What to avoid in the image |
+| `negative_prompt` | string | `"blurry, low quality, distorted, bad anatomy"` | What to avoid in the image |
 | `width` | integer | 1024 | Image width (multiples of 64) |
 | `height` | integer | 1024 | Image height (multiples of 64) |
 | `num_inference_steps` | integer | 20 | Number of denoising steps (reduced for 24GB) |
