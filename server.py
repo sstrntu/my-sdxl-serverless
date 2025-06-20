@@ -11,24 +11,10 @@ import traceback
 import numpy as np
 from PIL import Image
 
-# ✅ Redirect all Hugging Face cache, auth, and token writes to /runpod-volume
-os.environ["HF_HOME"] = "/runpod-volume/hf_home"
-os.environ["HF_HUB_CACHE"] = "/runpod-volume/hf_cache"
-os.environ["TRANSFORMERS_CACHE"] = "/runpod-volume/hf_cache"
-os.environ["XDG_CACHE_HOME"] = "/runpod-volume/hf_cache"
-
-# Additional environment variables to ensure everything saves to runpod-volume
-os.environ['TORCH_HOME'] = '/runpod-volume/torch_cache'
-os.environ['PYTORCH_KERNEL_CACHE_PATH'] = '/runpod-volume/torch_cache'
-
 # 🚀 GPU Memory optimization environment variables for 24GB
 os.environ['PYTORCH_CUDA_ALLOC_CONF'] = 'expandable_segments:True,max_split_size_mb:512'
 os.environ['CUDA_LAUNCH_BLOCKING'] = '1'  # Better memory debugging
 
-# Create additional cache directories
-os.makedirs('/runpod-volume/hf_home', exist_ok=True)
-os.makedirs('/runpod-volume/hf_cache', exist_ok=True)
-os.makedirs('/runpod-volume/torch_cache', exist_ok=True)
 
 # Model configuration
 MODEL_PATH = "/runpod-volume/models"
@@ -265,10 +251,8 @@ def load_model():
         pipe = StableDiffusion3Pipeline.from_pretrained(
             MODEL_PATH,
             torch_dtype=torch.bfloat16,
-            cache_dir='/runpod-volume/hf_cache',
             low_cpu_mem_usage=True,
             device_map="balanced",  # Use balanced instead of cpu
-            # variant="fp16",    # Removed - not available for this model
         )
         
         print(f"📊 After balanced loading: {get_gpu_memory_info()}")
@@ -329,7 +313,6 @@ def load_model():
             pipe = StableDiffusion3Pipeline.from_pretrained(
                 MODEL_PATH,
                 torch_dtype=torch.bfloat16,
-                cache_dir='/runpod-volume/hf_cache',
                 low_cpu_mem_usage=True,
                 # No device_map - let it load normally
             )
@@ -358,9 +341,8 @@ def load_model():
             raise
 
 # Initialize model at startup
-print("🔄 Initializing model for 24GB GPU...")
+print("🔄 Initializing model...")
 print(f"📍 Model will be stored at: {MODEL_PATH}")
-print(f"📍 Cache directory: {os.environ.get('HF_HOME')}")
 
 if download_model_if_needed():
     pipe = load_model()

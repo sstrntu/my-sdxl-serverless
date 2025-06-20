@@ -19,14 +19,14 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # Upgrade pip first
-RUN pip install --no-cache-dir --upgrade pip
+RUN pip install --upgrade pip
 
 # Install PyTorch first (largest packages)
-RUN pip install --no-cache-dir \
+RUN pip install \
     torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
 
 # Install ML and AI libraries
-RUN pip install --no-cache-dir \
+RUN pip install \
     diffusers \
     transformers \
     accelerate \
@@ -36,15 +36,13 @@ RUN pip install --no-cache-dir \
     sentencepiece
 
 # Install RunPod SDK
-RUN pip install --no-cache-dir runpod
+RUN pip install runpod
 
 WORKDIR /workspace
 
-# Copy both scripts
+# Copy application files
 COPY download_model.py /workspace/download_model.py
 COPY server.py /app/server.py
-
-# Note: Model and cache directories will be created on RunPod network volume at runtime
 
 WORKDIR /app
 CMD ["python", "server.py"]
