@@ -1,93 +1,158 @@
-# My Sdxl Serverless
+# Stable Diffusion 3.5 Large Serverless
 
+A RunPod serverless endpoint for generating high-quality images using Stable Diffusion 3.5 Large model with GPU memory optimizations.
 
+## Features
 
-## Getting started
+- 🚀 **Stable Diffusion 3.5 Large**: Latest and most powerful SD model
+- 💾 **GPU Memory Optimized**: CPU offloading and memory-efficient attention
+- 🔧 **Automatic Disk Management**: Handles large model downloads with symlink redirects
+- ⚡ **Fast Inference**: Optimized parameters for SD 3.5 Large
+- 🛡️ **Error Handling**: Robust error handling with fallback strategies
+- 📊 **Memory Monitoring**: Real-time GPU memory usage tracking
 
-To make it easy for you to get started with GitLab, here's a list of recommended next steps.
+## Requirements
 
-Already a pro? Just edit this README.md and make it your own. Want to make it easy? [Use the template at the bottom](#editing-this-readme)!
+- RunPod account with GPU instance (24GB+ required, optimized for 24GB)
+- Network volume for model storage (15GB+ required)
+- CUDA-compatible GPU
 
-## Add your files
+## Deployment
 
-- [ ] [Create](https://docs.gitlab.com/ee/user/project/repository/web_editor.html#create-a-file) or [upload](https://docs.gitlab.com/ee/user/project/repository/web_editor.html#upload-a-file) files
-- [ ] [Add files using the command line](https://docs.gitlab.com/topics/git/add_files/#add-files-to-a-git-repository) or push an existing Git repository with the following command:
+### 1. Clone and Push to Repository
+
+```bash
+git clone <your-repo>
+cd my-sdxl-serverless
+git add .
+git commit -m "Updated with memory optimizations"
+git push origin main
+```
+
+### 2. RunPod Setup
+
+1. Create a new serverless endpoint in RunPod
+2. Select GPU with 24GB+ VRAM (optimized for 24GB)
+3. Set container image to build from your repository
+4. Configure network volume (15GB+ storage)
+5. Set environment variables if needed
+
+### 3. Model Download
+
+The model will be automatically downloaded on first startup:
+- **Model**: stabilityai/stable-diffusion-3.5-large
+- **Size**: ~15GB
+- **Location**: `/runpod-volume/models`
+
+## API Usage
+
+### Request Format
+
+```json
+{
+  "input": {
+    "prompt": "A beautiful landscape with mountains and lakes",
+    "negative_prompt": "blurry, low quality, distorted",
+    "width": 1024,
+    "height": 1024,
+    "num_inference_steps": 28,
+    "guidance_scale": 4.5,
+    "seed": 42
+  }
+}
+```
+
+### Response Format
+
+```json
+{
+  "image": "base64_encoded_image_data",
+  "message": "✅ Image generation complete",
+  "parameters": {
+    "width": 1024,
+    "height": 1024,
+    "num_inference_steps": 28,
+    "guidance_scale": 4.5,
+    "seed": 42
+  }
+}
+```
+
+## Parameters
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `prompt` | string | **required** | Text description of desired image |
+| `negative_prompt` | string | **required** | What to avoid in the image |
+| `width` | integer | 1024 | Image width (multiples of 64) |
+| `height` | integer | 1024 | Image height (multiples of 64) |
+| `num_inference_steps` | integer | 20 | Number of denoising steps (reduced for 24GB) |
+| `guidance_scale` | float | 4.5 | How closely to follow the prompt |
+| `seed` | integer | random | Seed for reproducible results |
+
+## Memory Optimizations
+
+The project includes several memory optimizations for handling the large SD 3.5 model:
+
+- **CPU Offloading**: Keeps model components on CPU when not in use
+- **Attention Slicing**: Reduces memory during attention computation
+- **VAE Slicing**: Reduces memory during image decoding
+- **Memory Monitoring**: Tracks GPU usage throughout the process
+- **Fallback Loading**: Alternative loading strategy if OOM occurs
+
+## File Structure
 
 ```
-cd existing_repo
-git remote add origin https://gitlab.com/sirasasitorn/my-sdxl-serverless.git
-git branch -M main
-git push -uf origin main
+├── Dockerfile              # Container configuration
+├── server.py               # Main serverless handler
+├── download_model.py       # Model download with optimizations
+├── requirements.txt        # Python dependencies
+└── README.md              # This file
 ```
 
-## Integrate with your tools
+## Troubleshooting
 
-- [ ] [Set up project integrations](https://gitlab.com/sirasasitorn/my-sdxl-serverless/-/settings/integrations)
+### CUDA Out of Memory
+- Optimized for 24GB GPU with aggressive memory management
+- Automatic resolution limiting (max 1024x1024 for safety)
+- Sequential CPU offloading keeps components on CPU when not in use
+- Check logs for memory usage information
 
-## Collaborate with your team
+### Model Download Issues
+- Ensure network volume has 15GB+ free space
+- Check HuggingFace token permissions
+- Review disk space monitoring in logs
 
-- [ ] [Invite team members and collaborators](https://docs.gitlab.com/ee/user/project/members/)
-- [ ] [Create a new merge request](https://docs.gitlab.com/ee/user/project/merge_requests/creating_merge_requests.html)
-- [ ] [Automatically close issues from merge requests](https://docs.gitlab.com/ee/user/project/issues/managing_issues.html#closing-issues-automatically)
-- [ ] [Enable merge request approvals](https://docs.gitlab.com/ee/user/project/merge_requests/approvals/)
-- [ ] [Set auto-merge](https://docs.gitlab.com/user/project/merge_requests/auto_merge/)
+### Slow Generation
+- Reduce `num_inference_steps` (minimum 20)
+- Use smaller image dimensions
+- CPU offloading trades memory for speed
 
-## Test and Deploy
+## Environment Variables
 
-Use the built-in continuous integration in GitLab.
+The following are automatically set for optimal performance:
 
-- [ ] [Get started with GitLab CI/CD](https://docs.gitlab.com/ee/ci/quick_start/)
-- [ ] [Analyze your code for known vulnerabilities with Static Application Security Testing (SAST)](https://docs.gitlab.com/ee/user/application_security/sast/)
-- [ ] [Deploy to Kubernetes, Amazon EC2, or Amazon ECS using Auto Deploy](https://docs.gitlab.com/ee/topics/autodevops/requirements.html)
-- [ ] [Use pull-based deployments for improved Kubernetes management](https://docs.gitlab.com/ee/user/clusters/agent/)
-- [ ] [Set up protected environments](https://docs.gitlab.com/ee/ci/environments/protected_environments.html)
+```bash
+HF_HOME=/runpod-volume/hf_home
+PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
+TORCH_HOME=/runpod-volume/torch_cache
+```
 
-***
+## Performance Tips
 
-# Editing this README
-
-When you're ready to make this README your own, just edit this file and use the handy template below (or feel free to structure it however you want - this is just a starting point!). Thanks to [makeareadme.com](https://www.makeareadme.com/) for this template.
-
-## Suggestions for a good README
-
-Every project is different, so consider which of these sections apply to yours. The sections used in the template are suggestions for most open source projects. Also keep in mind that while a README can be too long and detailed, too long is better than too short. If you think your README is too long, consider utilizing another form of documentation rather than cutting out information.
-
-## Name
-Choose a self-explaining name for your project.
-
-## Description
-Let people know what your project can do specifically. Provide context and add a link to any reference visitors might be unfamiliar with. A list of Features or a Background subsection can also be added here. If there are alternatives to your project, this is a good place to list differentiating factors.
-
-## Badges
-On some READMEs, you may see small images that convey metadata, such as whether or not all the tests are passing for the project. You can use Shields to add some to your README. Many services also have instructions for adding a badge.
-
-## Visuals
-Depending on what you are making, it can be a good idea to include screenshots or even a video (you'll frequently see GIFs rather than actual videos). Tools like ttygif can help, but check out Asciinema for a more sophisticated method.
-
-## Installation
-Within a particular ecosystem, there may be a common way of installing things, such as using Yarn, NuGet, or Homebrew. However, consider the possibility that whoever is reading your README is a novice and would like more guidance. Listing specific steps helps remove ambiguity and gets people to using your project as quickly as possible. If it only runs in a specific context like a particular programming language version or operating system or has dependencies that have to be installed manually, also add a Requirements subsection.
-
-## Usage
-Use examples liberally, and show the expected output if you can. It's helpful to have inline the smallest example of usage that you can demonstrate, while providing links to more sophisticated examples if they are too long to reasonably include in the README.
-
-## Support
-Tell people where they can go to for help. It can be any combination of an issue tracker, a chat room, an email address, etc.
-
-## Roadmap
-If you have ideas for releases in the future, it is a good idea to list them in the README.
-
-## Contributing
-State if you are open to contributions and what your requirements are for accepting them.
-
-For people who want to make changes to your project, it's helpful to have some documentation on how to get started. Perhaps there is a script that they should run or some environment variables that they need to set. Make these steps explicit. These instructions could also be useful to your future self.
-
-You can also document commands to lint the code or run tests. These steps help to ensure high code quality and reduce the likelihood that the changes inadvertently break something. Having instructions for running tests is especially helpful if it requires external setup, such as starting a Selenium server for testing in a browser.
-
-## Authors and acknowledgment
-Show your appreciation to those who have contributed to the project.
+1. **First Run**: Initial startup takes 5-10 minutes for model download
+2. **Subsequent Runs**: ~30-60 seconds for model loading
+3. **Generation Time**: 30-60 seconds per image depending on parameters
+4. **Batch Processing**: Single image generation optimized for memory
 
 ## License
-For open source projects, say how it is licensed.
 
-## Project status
-If you have run out of energy or time for your project, put a note at the top of the README saying that development has slowed down or stopped completely. Someone may choose to fork your project or volunteer to step in as a maintainer or owner, allowing your project to keep going. You can also make an explicit request for maintainers.
+This project is open source. Please check individual model licenses:
+- Stable Diffusion 3.5 Large: [Stability AI License](https://huggingface.co/stabilityai/stable-diffusion-3.5-large)
+
+## Support
+
+For issues and questions:
+1. Check the troubleshooting section above
+2. Review RunPod logs for detailed error information
+3. Ensure GPU memory requirements are met
