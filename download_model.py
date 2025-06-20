@@ -30,6 +30,51 @@ os.environ['HOME'] = '/runpod-volume'  # This redirects ~/.cache as well
 # Create PyTorch JIT cache directory
 os.makedirs('/runpod-volume/torch_cache/jit', exist_ok=True)
 
+# 🚨 AGGRESSIVE FIX: Create symlinks for ALL possible temp/cache locations BEFORE imports
+import subprocess
+try:
+    # Create comprehensive symlink redirects
+    symlink_redirects = [
+        ('/tmp', '/runpod-volume/tmp'),
+        ('/var/tmp', '/runpod-volume/tmp'),
+        ('/root', '/runpod-volume'),  # This redirects /root/.cache, /root/.torch, etc.
+        ('/home/root', '/runpod-volume'),
+        ('/.cache', '/runpod-volume/cache'),
+        ('/usr/local/lib/python3.10/dist-packages/torch/.cache', '/runpod-volume/torch_cache'),
+    ]
+    
+    for original, target in symlink_redirects:
+        try:
+            # Skip if original doesn't exist or is already correct
+            if os.path.exists(original):
+                if os.path.islink(original):
+                    current_target = os.readlink(original)
+                    if current_target == target:
+                        continue  # Already correctly linked
+                    os.unlink(original)
+                elif os.path.isdir(original):
+                    # Move existing contents to target if possible
+                    if os.listdir(original):  # Directory not empty
+                        subprocess.run(['cp', '-r', f'{original}/*', target], shell=True)
+                    subprocess.run(['rm', '-rf', original])
+                else:
+                    os.remove(original)
+            
+            # Create parent directory if needed
+            parent_dir = os.path.dirname(original)
+            if parent_dir and parent_dir != '/' and not os.path.exists(parent_dir):
+                os.makedirs(parent_dir, exist_ok=True)
+            
+            # Create symlink
+            os.symlink(target, original)
+            print(f"🔗 Symlinked: {original} -> {target}")
+            
+        except Exception as e:
+            print(f"⚠️ Could not create symlink {original} -> {target}: {e}")
+            
+except Exception as e:
+    print(f"⚠️ Error during symlink creation: {e}")
+
 from huggingface_hub import login
 from diffusers import StableDiffusion3Pipeline
 import torch
