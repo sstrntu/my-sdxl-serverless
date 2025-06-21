@@ -1,7 +1,4 @@
-# Core ML/AI packages
-torch>=2.0.0
-torchvision>=0.15.0
-torchaudio>=2.0.0
+# ML/AI packages (non-PyTorch)
 diffusers>=0.24.0
 transformers>=4.35.0
 accelerate>=0.24.0

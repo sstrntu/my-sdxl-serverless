@@ -21,11 +21,13 @@ RUN apt-get update && apt-get install -y \
 # Upgrade pip first
 RUN pip install --upgrade pip
 
-# Copy requirements first for better Docker layer caching
-COPY requirements.txt /tmp/requirements.txt
+# Install PyTorch packages first with CUDA index
+RUN pip install torch>=2.0.0 torchvision>=0.15.0 torchaudio>=2.0.0 \
+    --index-url https://download.pytorch.org/whl/cu121
 
-# Install all Python dependencies from requirements.txt
-RUN pip install -r /tmp/requirements.txt --index-url https://download.pytorch.org/whl/cu121
+# Copy and install remaining packages from requirements.txt
+COPY requirements.txt /tmp/requirements.txt
+RUN pip install -r /tmp/requirements.txt
 
 WORKDIR /workspace
 
