@@ -21,22 +21,11 @@ RUN apt-get update && apt-get install -y \
 # Upgrade pip first
 RUN pip install --upgrade pip
 
-# Install PyTorch first (largest packages)
-RUN pip install \
-    torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
+# Copy requirements first for better Docker layer caching
+COPY requirements.txt /tmp/requirements.txt
 
-# Install ML and AI libraries
-RUN pip install \
-    diffusers \
-    transformers \
-    accelerate \
-    safetensors \
-    huggingface_hub \
-    protobuf>=3.20.0 \
-    sentencepiece
-
-# Install RunPod SDK
-RUN pip install runpod
+# Install all Python dependencies from requirements.txt
+RUN pip install -r /tmp/requirements.txt --index-url https://download.pytorch.org/whl/cu121
 
 WORKDIR /workspace
 
